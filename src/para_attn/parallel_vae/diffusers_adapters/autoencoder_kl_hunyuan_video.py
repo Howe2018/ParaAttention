@@ -59,7 +59,7 @@ def parallelize_vae(vae: AutoencoderKLHunyuanVideo, *, mesh=None):
             row = []
             for j in range(0, width, self.tile_sample_stride_width):
                 if count % world_size == rank:
-                    tile = x[:, :, :, i : i + self.tile_sample_min_size, j : j + self.tile_sample_min_size]
+                    tile = x[:, :, :, i : i + self.tile_sample_min_height, j : j + self.tile_sample_min_width]
                     tile = self.encoder(tile)
                     tile = self.quant_conv(tile)
                 else:
