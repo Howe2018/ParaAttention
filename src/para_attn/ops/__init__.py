@@ -5,12 +5,21 @@ import torch.backends.cuda as cuda_backend
 import torch.nn.functional as F
 from torch.backends.cuda import SDPAParams
 from torch.nn.attention import SDPBackend
+from sageattention import sageattn
 
 aten = torch.ops.aten
 
 
 def cannot_use_attention_backend(*args, **kwargs):
     return False
+
+def get_gpu_info() -> Tuple[str, float]:
+    gpu_info = torch.cuda.get_device_properties(0)
+    return gpu_info.name, float(f"{gpu_info.major}.{gpu_info.minor}")
+
+gpu_name, compute_capability = get_gpu_info()
+use_sageattn = (compute_capability >= 8.9)
+print(f"Using SageAttn: {use_sageattn}, GPU: {gpu_name}, Compute Capability: {compute_capability}")
 
 
 can_use_flash_attention = getattr(cuda_backend, "can_use_flash_attention", cannot_use_attention_backend)
@@ -282,8 +291,17 @@ def _attention_forward_sparse_kv(
         indices_ = indices[m]
         k = k[..., indices_, :]
         v = v[..., indices_, :]
-        outputs.append(
-            F.scaled_dot_product_attention(
+        if use_sageattn:
+            out = sageattn(
+                q,
+                k,
+                v,
+                tensor_layout="HND",
+                is_causal=is_causal,
+                sm_scale=scale,
+            )
+        else:
+            out = F.scaled_dot_product_attention(
                 q,
                 k,
                 v,
@@ -291,7 +309,7 @@ def _attention_forward_sparse_kv(
                 is_causal=is_causal,
                 scale=scale,
             )
-        )
+        outputs.append(out)
         del q, k, v, m, indices_
 
     if len(outputs) == 1:
