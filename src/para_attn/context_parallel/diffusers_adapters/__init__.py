@@ -15,6 +15,8 @@ def parallelize_transformer(transformer, *args, **kwargs):
         adapter_name = "cogvideox"
     elif transformer_cls_name.startswith("HunyuanVideo"):
         adapter_name = "hunyuan_video"
+    elif transformer_cls_name.startswith("SkyreelsVideo"):
+        adapter_name = "hunyuan_video"
     else:
         raise ValueError(f"Unknown transformer class name: {transformer_cls_name}")
 
